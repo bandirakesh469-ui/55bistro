@@ -1,1 +1,67 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>55 Bistro | Digital Menu</title><link rel="icon" href="{{url_for('static',filename='img/logo.png')}}"><link rel="stylesheet" href="{{url_for('static',filename='style.css')}}"></head>
+<body>
+<div id="loader"><img src="{{url_for('static',filename='img/logo.png')}}"><div class="loader-ring"></div></div>
+<div id="toast"></div>
+<!-- offer popup -->
+{% if offers %}<div id="offer-modal" class="offer-modal"><div class="offer-card"><button class="offer-close" onclick="closeOffer()">×</button><img src="{{url_for('static',filename=offers[0].poster)}}" alt="55 Bistro Offer"><div class="offer-copy"><h2>{{offers[0].title}}</h2><p>{{offers[0].description}}</p></div></div></div>{% endif %}
 
+<header class="topbar"><button class="menu-btn" onclick="toggleSide()">☰</button><a href="/" class="brand"><img src="{{url_for('static',filename='img/logo.png')}}"></a><a href="#contact" class="contact-mini">Contact</a></header>
+<aside id="side"><button onclick="toggleSide()">×</button><a href="#menu" onclick="toggleSide()">Digital Menu</a><a href="#booking" onclick="toggleSide()">Book a Table</a><a href="#contact" onclick="toggleSide()">Contact</a><a href="{{url_for('admin_login')}}">Admin Login</a></aside>
+
+<section class="hero"><img src="{{url_for('static',filename='img/logo.png')}}" class="hero-logo"><p>Digital Menu • Rooftop Dining • Nellore</p>
+<div class="actions"><a class="btn" href="#menu">Explore Menu</a><a class="btn dark" href="#booking">Book a Table</a></div></section>
+
+<main>
+<section id="menu" class="section"><div class="section-head"><span>55 BISTRO</span><h1>Digital Menu</h1><p>Tap a dish to view details, ratings and order options.</p></div>
+<div class="chips">{% for c in categories %}<a href="#cat-{{c|replace(' ','-')}}" class="chip">{{c}}</a>{% endfor %}</div>
+{% for category,items in menu.items() %}<div class="category" id="cat-{{category|replace(' ','-')}}"><h2>{{category}}</h2><div class="food-row">
+{% for x in items %}<article class="food-card">
+<div class="food-img">{% if x.image %}<img src="{{url_for('static',filename=x.image)}}" alt="{{x.name}}">{% else %}<div class="placeholder">55</div>{% endif %}</div>
+<div class="food-info"><div class="food-title"><h3>{{x.name}}</h3><strong>₹{{'%.0f'|format(x.price)}}</strong></div>
+<div class="rating"><button onclick="openRating({{x.id}},'{{x.name|e}}')">★ {{'%.1f'|format(x.rating)}} <small>({{x.rating_count}})</small></button></div>
+<p>{{x.description}}</p><div class="card-bottom"><button class="add btn small" onclick='addItem({{x.id}},{{x.name|tojson}},{{x.price}})'>Add</button><button class="more" onclick='details({{x.id}},{{x.name|tojson}},{{x.description|tojson}},{{x.rating}},{{x.rating_count}})'>Details</button></div></div>
+</article>{% endfor %}</div></div>{% endfor %}
+</section>
+
+<section id="booking" class="section dark-section"><div class="section-head light"><span>RESERVATIONS</span><h1>Book Your Table</h1><p>Choose your date, arrival time and table duration.</p></div>
+<form id="bookingForm" class="glass-form" onsubmit="submitBooking(event)"><div class="grid">
+<label>Full Name<input id="bname" required></label><label>Contact Number<input id="bphone" type="tel" required></label>
+<label>Members<input id="bguests" type="number" min="1" max="50" value="2" required></label><label>Date<input id="bdate" type="date" required></label>
+<label>Arrival Time<input id="btime" type="time" required></label><label>Table Duration<select id="bduration"><option value="1">1 Hour</option><option value="2" selected>2 Hours</option><option value="3">3 Hours</option><option value="4">4 Hours</option></select></label></div>
+<label>Special Request<textarea id="bnotes" rows="3"></textarea></label><button class="btn" type="submit">Submit Booking</button></form></section>
+
+<section id="contact" class="section"><div class="section-head"><span>VISIT US</span><h1>Contact 55 Bistro</h1></div>
+<div class="contact-grid"><div class="contact-card"><b>Address</b><p>{{contact.address}}</p><a class="btn small" target="_blank" href="{{contact.map}}">Open in Google Maps</a></div>
+<a class="contact-card" href="{{contact.phone_link}}"><b>Phone</b><p>{{contact.phone}}</p><span>Call 55 Bistro</span></a>
+<a class="contact-card" target="_blank" href="{{contact.whatsapp}}"><b>WhatsApp</b><p>Direct Chat</p><span>Message us</span></a>
+<a class="contact-card" target="_blank" href="{{contact.instagram}}"><b>Instagram</b><p>@55bistro</p><span>Open Profile</span></a>
+<a class="contact-card" target="_blank" href="{{contact.facebook}}"><b>Facebook</b><p>55 Bistro</p><span>Open Page</span></a></div></section>
+</main>
+
+<div id="cart" class="cart"><span><b id="count">0</b> items · <b id="total">₹0</b></span><button class="btn small" onclick="openCheckout()">Checkout</button></div>
+<div id="checkout" class="popup"><div class="popup-box"><button class="x" onclick="closeCheckout()">×</button><h2>Place Order</h2><input id="oname" placeholder="Full Name"><input id="ophone" placeholder="Contact Number"><div id="cartLines"></div><button class="btn" onclick="submitOrder()">Place Order</button></div></div>
+<div id="ratingPopup" class="popup"><div class="popup-box"><button class="x" onclick="closeRating()">×</button><h2 id="ratingTitle">Rate Item</h2><div class="stars" id="stars"></div><p id="ratingMeta"></p></div></div>
+<div id="detailPopup" class="popup"><div class="popup-box"><button class="x" onclick="closeDetail()">×</button><h2 id="detailName"></h2><p id="detailDesc"></p><div id="detailRating"></div></div></div>
+<footer>© 2026 <b>55 Bistro</b> · Digital Menu</footer>
+<script>
+let cart=[], ratingId=null, selectedRating=0;
+const $=id=>document.getElementById(id);
+function hideLoader(){setTimeout(()=>{$('loader').classList.add('hide')},900)}
+window.addEventListener('load',hideLoader);
+function toggleSide(){$('side').classList.toggle('open')}
+function closeOffer(){$('offer-modal')?.remove()}
+function toast(m,bad=false){$('toast').textContent=m;$('toast').className='show '+(bad?'bad':'');setTimeout(()=>$('toast').className='',2800)}
+function addItem(id,name,price){let x=cart.find(a=>a.id===id);if(x)x.qty++;else cart.push({id,name,price,qty:1});renderCart();toast(name+' added to order')}
+function renderCart(){let n=cart.reduce((a,x)=>a+x.qty,0),t=cart.reduce((a,x)=>a+x.price*x.qty,0);$('count').textContent=n;$('total').textContent='₹'+Math.round(t);$('cart').classList.toggle('show',n>0)}
+function openCheckout(){$('checkout').classList.add('show');$('cartLines').innerHTML=cart.map(x=>`<div>${x.name} × ${x.qty} — ₹${x.price*x.qty}</div>`).join('')}
+function closeCheckout(){$('checkout').classList.remove('show')}
+async function submitOrder(){let name=$('oname').value.trim(),phone=$('ophone').value.trim();if(!name||!phone)return toast('Enter your name and contact number.',true);let r=await fetch('/api/order',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,phone,cart})}),d=await r.json();toast(d.message,!d.ok);if(d.ok){cart=[];renderCart();closeCheckout()}}
+function details(id,n,d,r,c){$('detailName').textContent=n;$('detailDesc').textContent=d;$('detailRating').innerHTML=`★ ${Number(r).toFixed(1)} / 5 · ${c} ratings`;$('detailPopup').classList.add('show')}
+function closeDetail(){$('detailPopup').classList.remove('show')}
+function openRating(id,n){ratingId=id;selectedRating=0;$('ratingTitle').textContent='Rate '+n;$('ratingMeta').textContent='Select 1 to 5 stars';$('stars').innerHTML=[1,2,3,4,5].map(i=>`<button onclick="sendRating(${i})">★</button>`).join('');$('ratingPopup').classList.add('show')}
+function closeRating(){$('ratingPopup').classList.remove('show')}
+async function sendRating(v){let r=await fetch('/api/rating',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({item_id:ratingId,rating:v})}),d=await r.json();toast(d.message,!d.ok);if(d.ok)closeRating()}
+async function submitBooking(e){e.preventDefault();let payload={name:$('bname').value,phone:$('bphone').value,guests:$('bguests').value,date:$('bdate').value,time:$('btime').value,duration:$('bduration').value,notes:$('bnotes').value};let r=await fetch('/book-table',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),d=await r.json();toast(d.message,!d.ok);if(d.ok)$('bookingForm').reset()}
+</script></body></html>
